@@ -7,9 +7,6 @@ import os
 
 app = Flask(__name__)
 
-# Load Whisper model once (tiny for speed)
-model = whisper.load_model("tiny")
-
 
 # 🔽 Download audio from YouTube
 def download_audio(url):
@@ -144,6 +141,7 @@ def dub():
             return "Error: audio.wav was not created. Check yt_dlp."
 
         # 2️⃣ Whisper → English
+        model = whisper.load_model("tiny")
         result = model.transcribe("audio.wav", task="translate", fp16=False)
         english_text = result["text"]
 
