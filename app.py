@@ -10,6 +10,7 @@ app = Flask(__name__)
 
 # 🔽 Download audio from YouTube
 def download_audio(url):
+
     # Remove old files
     if os.path.exists("audio.wav"):
         os.remove("audio.wav")
@@ -19,6 +20,14 @@ def download_audio(url):
         "outtmpl": "audio.%(ext)s",
         "noplaylist": True,
         "quiet": False,
+
+        # Android client trick (avoids bot detection sometimes)
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android"]
+            }
+        },
+
         "postprocessors": [{
             "key": "FFmpegExtractAudio",
             "preferredcodec": "wav",
@@ -90,10 +99,15 @@ def home():
             }
         </style>
     </head>
+
     <body>
+
         <div class="card">
+
             <h2>🎧 AI Audio Translator</h2>
+
             <form method="POST" action="/dub">
+
                 <input name="url" placeholder="Paste YouTube link" required />
 
                 <select name="language">
@@ -106,46 +120,58 @@ def home():
                     <option value="de">German</option>
                 </select>
 
-                <button type="submit" id="btn">Translate Audio</button>
+                <button type="submit" id="btn">
+                    Translate Audio
+                </button>
+
             </form>
 
             <div class="small">
-                Works best with short videos (under 2 minutes)
+                Works best with short videos
             </div>
+
         </div>
 
         <script>
-            const form = document.querySelector("form");
-            const btn = document.getElementById("btn");
 
-            form.addEventListener("submit", function() {
-                btn.innerText = "Processing... Please wait";
-                btn.disabled = true;
-            });
+            const form = document.querySelector("form")
+            const btn = document.getElementById("btn")
+
+            form.addEventListener("submit", function(){
+
+                btn.innerText = "Processing... Please wait"
+                btn.disabled = true
+
+            })
+
         </script>
+
     </body>
+
     </html>
     """
 
 
 @app.route("/dub", methods=["POST"])
 def dub():
+
     try:
+
         url = request.form["url"]
         target_lang = request.form["language"]
 
-        # 1️⃣ Download Audio
+        # 1️⃣ Download audio
         download_audio(url)
 
         if not os.path.exists("audio.wav"):
-            return "Error: audio.wav was not created. Check yt_dlp."
+            return "Error: audio.wav not created."
 
-        # 2️⃣ Whisper → English
+        # 2️⃣ Whisper transcription
         model = whisper.load_model("tiny")
         result = model.transcribe("audio.wav", task="translate", fp16=False)
         english_text = result["text"]
 
-        # 3️⃣ Translate → Selected Language
+        # 3️⃣ Translate
         translated_text = GoogleTranslator(
             source="auto",
             target=target_lang
@@ -155,10 +181,9 @@ def dub():
         tts = gTTS(text=translated_text, lang=target_lang)
         tts.save("output.mp3")
 
-        # Send file
         response = send_file("output.mp3", as_attachment=True)
 
-        # Cleanup files
+        # Cleanup
         if os.path.exists("audio.wav"):
             os.remove("audio.wav")
 
